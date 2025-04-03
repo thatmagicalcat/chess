@@ -9,9 +9,9 @@ use crate::piece::*;
 
 pub struct Board<'a> {
     squares: Grid<(Piece, PieceColor)>,
-    square_draw_rect: RectangleShape<'a>,
-    texture_draw_rect: RectangleShape<'a>,
-    move_draw_rect: CircleShape<'a>,
+    square_drawing_shape: RectangleShape<'a>,
+    texture_drawing_shape: RectangleShape<'a>,
+    move_drawing_shape: CircleShape<'a>,
     texture_rect: HashMap<(Piece, PieceColor), Rect<i32>>,
     active_cell: (i32, i32),
     moves: Vec<(i32, i32)>,
@@ -51,14 +51,14 @@ impl<'a> Board<'a> {
                 map
             },
 
-            square_draw_rect: {
+            square_drawing_shape: {
                 let mut s = RectangleShape::new();
                 s.set_size((SQUARE_WIDTH as _, SQUARE_HEIGHT as _));
                 s.set_outline_thickness(0.);
                 s
             },
 
-            texture_draw_rect: {
+            texture_drawing_shape: {
                 let mut s = RectangleShape::new();
                 s.set_size((SQUARE_WIDTH as _, SQUARE_HEIGHT as _));
                 s.set_outline_thickness(0.);
@@ -66,7 +66,7 @@ impl<'a> Board<'a> {
                 s
             },
 
-            move_draw_rect: {
+            move_drawing_shape: {
                 let mut c = CircleShape::new(8., 20);
                 c.set_origin((
                     (SQUARE_WIDTH as f32 / 2. - 8.) * -1.,
@@ -124,17 +124,17 @@ impl<'a> Board<'a> {
             for (col_idx, col) in self.squares.iter_col(row).enumerate() {
                 let is_white_square = (row + col_idx) % 2 == 0;
 
-                self.square_draw_rect.set_position((
+                self.square_drawing_shape.set_position((
                     (row as u32 * SQUARE_WIDTH) as _,
                     (col_idx as u32 * SQUARE_HEIGHT) as _,
                 ));
 
-                self.texture_draw_rect.set_position((
+                self.texture_drawing_shape.set_position((
                     (row as u32 * SQUARE_WIDTH) as _,
                     (col_idx as u32 * SQUARE_HEIGHT) as _,
                 ));
 
-                self.square_draw_rect.set_fill_color(if is_white_square {
+                self.square_drawing_shape.set_fill_color(if is_white_square {
                     PieceColor::White.as_color()
                 } else {
                     PieceColor::Black.as_color()
@@ -144,43 +144,42 @@ impl<'a> Board<'a> {
 
                 if row as i32 == y && col_idx as i32 == x {
                     let color = Color::rgb(50, 200, 50);
-                    self.square_draw_rect.set_fill_color(color);
+                    self.square_drawing_shape.set_fill_color(color);
                 }
 
-                window.draw(&self.square_draw_rect);
+                window.draw(&self.square_drawing_shape);
 
                 // Draw possible moves (if a piece is selected)
                 for (row, col) in self.moves.iter() {
-                    self.move_draw_rect.set_fill_color(Color::GREEN);
+                    self.move_drawing_shape.set_fill_color(Color::GREEN);
 
                     if self.squares.get(*row as usize, *col as usize).is_none() {
                         continue;
                     }
 
                     if let Some((p, piece_color)) = self.squares.get(*row as usize, *col as usize) {
-                        if *p != Piece::None {
-                            if self
+                        if *p != Piece::None
+                            && self
                                 .active_piece_color
                                 .is_some_and(|i| i.is_opposite(piece_color))
-                            {
-                                self.move_draw_rect.set_fill_color(Color::RED);
-                            }
+                        {
+                            self.move_drawing_shape.set_fill_color(Color::RED);
                         }
                     }
 
-                    self.move_draw_rect.set_position((
+                    self.move_drawing_shape.set_position((
                         (*col as u32 * SQUARE_WIDTH) as _,
                         (*row as u32 * SQUARE_HEIGHT) as _,
                     ));
 
-                    window.draw(&self.move_draw_rect);
+                    window.draw(&self.move_drawing_shape);
                 }
 
                 if !matches!(col.0, Piece::None) {
-                    self.texture_draw_rect
+                    self.texture_drawing_shape
                         .set_texture_rect(self.texture_rect[&(col.0, col.1)]);
 
-                    window.draw(&self.texture_draw_rect);
+                    window.draw(&self.texture_drawing_shape);
                 }
 
                 // self.move_draw_rect.set_position((
@@ -198,57 +197,47 @@ impl<'a> Board<'a> {
     }
 
     pub fn handle_event(&mut self, event: sfml::window::Event) {
-        match event {
-            Event::MouseButtonPressed { x, y, .. } => {
-                let Square((x, y), (clicked_piece, clicked_piece_color)) = self.get_square(x, y);
+        if let Event::MouseButtonPressed { x, y, .. } = event {
+            let Square((x, y), (clicked_piece, clicked_piece_color)) = self.get_square(x, y);
 
-                if self.active_piece_color.is_none() && clicked_piece != Piece::None {
-                    self.active_cell = (x, y);
+            if self.active_piece_color.is_none() && clicked_piece != Piece::None {
+                self.active_cell = (x, y);
 
-                    let moves = self.calc_moves(x as _, y as _);
+                let moves = self.calc_moves(x as _, y as _);
 
-                    self.moves.clear();
-                    self.moves = moves;
-                    self.active_piece_color = Some(clicked_piece_color);
-                } else if self.active_piece_color.is_some() && clicked_piece != Piece::None {
-                    if self.moves.iter().any(|&t| t == (x, y)) {
-                        if clicked_piece_color
-                            .is_opposite(self.active_piece_color.as_ref().unwrap())
-                        {
-                            self.squares[x as usize][y as usize] =
-                                *self.get_active_piece().unwrap();
-                            self.get_active_piece().unwrap().0 = Piece::None;
-                        }
-                    }
-
-                    self.active_cell = (-1, -1);
-                    self.active_piece_color = None;
-                    self.moves.clear();
-                } else {
-                    if self.moves.iter().any(|&t| t == (x, y)) {
-                        let (a_x, a_y) = self.active_cell;
-
-                        self.squares[x as usize][y as usize] =
-                            self.squares[a_x as usize][a_y as usize];
-                        self.squares[a_x as usize][a_y as usize].0 = Piece::None;
-                    }
-
-                    self.active_cell = (-1, -1);
-                    self.active_piece_color = None;
-                    self.moves.clear();
+                self.moves.clear();
+                self.moves = moves;
+                self.active_piece_color = Some(clicked_piece_color);
+            } else if self.active_piece_color.is_some() && clicked_piece != Piece::None {
+                if self.moves.contains(&(x, y)) && clicked_piece_color.is_opposite(self.active_piece_color.as_ref().unwrap()) {
+                    self.squares[x as usize][y as usize] = *self.get_active_piece().unwrap();
+                    self.get_active_piece().unwrap().0 = Piece::None;
                 }
-            }
 
-            _ => {}
+                self.active_cell = (-1, -1);
+                self.active_piece_color = None;
+                self.moves.clear();
+            } else {
+                if self.moves.contains(&(x, y)) {
+                    let (a_x, a_y) = self.active_cell;
+
+                    self.squares[x as usize][y as usize] = self.squares[a_x as usize][a_y as usize];
+                    self.squares[a_x as usize][a_y as usize].0 = Piece::None;
+                }
+
+                self.active_cell = (-1, -1);
+                self.active_piece_color = None;
+                self.moves.clear();
+            }
         }
     }
 
     fn get_square(&self, x: i32, y: i32) -> Square {
         // column of the cell
-        let col_idx = x as i32 / SQUARE_WIDTH as i32;
+        let col_idx = x / SQUARE_WIDTH as i32;
 
         // row of the cell
-        let row_idx = y as i32 / SQUARE_HEIGHT as i32;
+        let row_idx = y / SQUARE_HEIGHT as i32;
 
         Square(
             (row_idx, col_idx),
@@ -604,7 +593,7 @@ impl<'a> Board<'a> {
                             }
                         }
 
-                        if let Some((p, c)) = self.squares.get(row as usize - 2, col as usize) {
+                        if let Some((p, _)) = self.squares.get(row as usize - 2, col as usize) {
                             if *p == Piece::None {
                                 moves.push((row - 2, col));
                             }
@@ -648,55 +637,53 @@ impl<'a> Board<'a> {
                             }
                         }
                     }
+                } else if row == 1 {
+                    if let Some((p, _)) = self.squares.get(row as usize + 1, col as usize) {
+                        if *p == Piece::None {
+                            moves.push((row + 1, col));
+                        }
+                    }
+
+                    if let Some((p, _)) = self.squares.get(row as usize + 2, col as usize) {
+                        if *p == Piece::None {
+                            moves.push((row + 2, col));
+                        }
+                    }
+
+                    if col > 0 {
+                        if let Some((p, c)) =
+                            self.squares.get(row as usize + 1, col as usize + 1)
+                        {
+                            if *p != Piece::None && c.is_opposite(&current_piece_color) {
+                                moves.push((row + 1, col + 1));
+                            }
+                        }
+                    }
                 } else {
-                    if row == 1 {
+                    if row < 7 {
                         if let Some((p, _)) = self.squares.get(row as usize + 1, col as usize) {
                             if *p == Piece::None {
                                 moves.push((row + 1, col));
                             }
                         }
+                    }
 
-                        if let Some((p, c)) = self.squares.get(row as usize + 2, col as usize) {
-                            if *p == Piece::None {
-                                moves.push((row + 2, col));
+                    if col > 0 && row < 7 {
+                        if let Some((p, c)) =
+                            self.squares.get(row as usize + 1, col as usize - 1)
+                        {
+                            if *p != Piece::None && c.is_opposite(&current_piece_color) {
+                                moves.push((row + 1, col - 1));
                             }
                         }
+                    }
 
-                        if col > 0 {
-                            if let Some((p, c)) =
-                                self.squares.get(row as usize + 1, col as usize + 1)
-                            {
-                                if *p != Piece::None && c.is_opposite(&current_piece_color) {
-                                    moves.push((row + 1, col + 1));
-                                }
-                            }
-                        }
-                    } else {
-                        if row < 7 {
-                            if let Some((p, _)) = self.squares.get(row as usize + 1, col as usize) {
-                                if *p == Piece::None {
-                                    moves.push((row + 1, col));
-                                }
-                            }
-                        }
-
-                        if col > 0 && row < 7 {
-                            if let Some((p, c)) =
-                                self.squares.get(row as usize + 1, col as usize - 1)
-                            {
-                                if *p != Piece::None && c.is_opposite(&current_piece_color) {
-                                    moves.push((row + 1, col - 1));
-                                }
-                            }
-                        }
-
-                        if row < 7 {
-                            if let Some((p, c)) =
-                                self.squares.get(row as usize + 1, col as usize + 1)
-                            {
-                                if *p != Piece::None && c.is_opposite(&current_piece_color) {
-                                    moves.push((row + 1, col + 1));
-                                }
+                    if row < 7 {
+                        if let Some((p, c)) =
+                            self.squares.get(row as usize + 1, col as usize + 1)
+                        {
+                            if *p != Piece::None && c.is_opposite(&current_piece_color) {
+                                moves.push((row + 1, col + 1));
                             }
                         }
                     }

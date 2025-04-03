@@ -7,9 +7,8 @@ mod piece;
 use consts::*;
 
 fn main() {
-    // print hello world
     let window_setttings = ContextSettings {
-        antialiasing_level: 8,
+        antialiasing_level: 4,
         ..Default::default()
     };
 
