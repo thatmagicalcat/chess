@@ -13,7 +13,8 @@ fn main() {
         ..Default::default()
     };
 
-    let mut window = RenderWindow::new((WIDTH, HEIGHT), "Chess", Style::CLOSE, &window_setttings);
+    let mut window =
+        RenderWindow::new((WIDTH, HEIGHT), "Chess", Style::CLOSE, &window_setttings).unwrap();
 
     window.set_vertical_sync_enabled(true);
 
@@ -28,6 +29,7 @@ fn main() {
         while let Some(event) = window.poll_event() {
             board.handle_event(event);
 
+            #[allow(clippy::single_match)]
             match event {
                 Event::Closed => window.close(),
                 _ => {}
