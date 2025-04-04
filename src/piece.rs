@@ -1,38 +1,35 @@
-use sfml::graphics::Color;
+#[derive(Debug, Clone, Copy)]
+pub struct Piece {
+    pub ty: PieceTy,
+    pub color: PieceColor,
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+impl Piece {
+    /// Returns the texture index in OpenGL TEXTURE_2D_ARRAY
+    pub fn get_texture_index(&self) -> u8 {
+        self.ty as u8 + self.color as u8 * 6
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
 pub enum PieceColor {
     White,
     Black,
 }
 
-impl PieceColor {
-    pub fn as_color(&self) -> Color {
-        match self {
-            PieceColor::White => Color::rgb(170, 150, 150),
-            PieceColor::Black => Color::rgb(90, 70, 70),
-        }
-    }
-
-    #[inline(always)]
-    pub fn is_opposite(&self, other: &Self) -> bool {
-        self != other
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Piece {
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum PieceTy {
     King,
     Queen,
     Bishop,
     Knight,
     Rook,
     Pawn,
-
-    None,
 }
 
-impl Piece {
+impl PieceTy {
     pub fn from_u8(n: u8) -> Option<Self> {
         if n > 5 {
             return None;
