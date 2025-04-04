@@ -20,6 +20,9 @@ fn main() {
     glfw.window_hint(WindowHint::ContextVersion(4, 2));
     glfw.window_hint(WindowHint::OpenGlProfile(OpenGlProfileHint::Core));
 
+    #[cfg(target_os = "macos")]
+    glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+
     glfw.window_hint(WindowHint::Resizable(false));
 
     let (mut window, events) = glfw
@@ -37,6 +40,7 @@ fn main() {
         gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
         gl.viewport(0, 0, WIDTH as _, HEIGHT as _);
 
+        #[cfg(not(target_os = "macos"))]
         gl.debug_message_callback(|_source, _gltype, id, severity, msg| {
             println!(
                 "GL CALLBACK: {} severity = {}, message = {}",
