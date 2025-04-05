@@ -1,9 +1,11 @@
 use std::io::Write;
+use std::time::Instant;
 
 use glow::HasContext;
 use image::GenericImageView;
 
 use crate::Program;
+use crate::bitboard::BitBoard;
 use crate::piece::Piece;
 
 pub struct PieceRenderer<'a> {
@@ -35,26 +37,28 @@ impl<'a> PieceRenderer<'a> {
         }
     }
 
-    pub fn set_active_piece(&self, active_piece: Option<(u32, u32)>) {
+    // pub fn set_active_piece(&self, active_piece: Option<(u32, u32)>) {
 
-    }
+    // }
 
-    pub fn render(&self, pieces: &grid::Grid<Option<Piece>>) {
+    pub fn render(&self, bb: &BitBoard) {
         unsafe {
             self.program.use_program();
             self.gl
                 .bind_texture(glow::TEXTURE_2D_ARRAY, Some(self.texture_array_id));
             self.gl.bind_vertex_array(Some(self.vao));
 
-            for row in 0..pieces.rows() {
-                for col in 0..pieces.cols() {
-                    if let Some(Some(piece)) = pieces.get(row, col) {
+            for row in 0..8 {
+                for col in 0..8 {
+                    if let Some(piece) = bb.get_piece_at(row * 8 + col) {
+                        // position
                         self.gl.uniform_2_f32(
                             self.program.get_uniform_location("piece_position").as_ref(),
                             col as _,
                             row as _,
                         );
 
+                        // texture index
                         self.gl.uniform_1_i32(
                             self.program.get_uniform_location("texture_index").as_ref(),
                             piece.get_texture_index() as _,

@@ -1,6 +1,6 @@
 use glow::HasContext;
 
-use crate::Program;
+use crate::{Program, bitboard::BitBoard, piece::Piece};
 
 #[rustfmt::skip]
 const BOARD_VERTICES: [f32; 12] = [
@@ -61,15 +61,35 @@ impl<'a> GridRenderer<'a> {
         }
     }
 
-    pub fn render(&self, active_piece: Option<(i32, i32)>) {
-        let (x, y) = active_piece.unwrap_or((-1, -1));
+    /// col, row
+    pub fn render(&self, active_piece: Option<(i32, i32)>, piece_moves: u64) {
+        let (col, row) = active_piece.unwrap_or((-1, -1));
 
         unsafe {
+            /*
+             *
+             * To my future self and other people reading it: I apologise for all the shit
+             * code following this comment and the code which is inside the grid shader,
+             * maybe I don't know enough graphics programming at the time or writing this.
+             * I sincerely apologise for all the headache it is going to cause in the future.
+             *
+             */
+
+            let ms_part = ((piece_moves & ((u32::MAX as u64) << 32)) >> 32) as u32;
+            let ls_part = (piece_moves & u32::MAX as u64) as u32;
+
             self.program.use_program();
+
             self.gl.uniform_2_i32(
                 self.program.get_uniform_location("active_piece").as_ref(),
-                x,
-                y,
+                col,
+                row,
+            );
+
+            self.gl.uniform_2_u32(
+                self.program.get_uniform_location("piece_moves").as_ref(),
+                ms_part,
+                ls_part,
             );
 
             self.gl.bind_vertex_array(Some(self.vao));

@@ -1,81 +1,63 @@
+use crate::bitboard::{BitBoard, MoveList};
 use crate::grid_renderer::GridRenderer;
-use crate::piece::*;
+use crate::piece::Piece;
 use crate::piece_renderer::PieceRenderer;
 
 pub const ROWS: u32 = 8;
 pub const COLS: u32 = 8;
-pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+pub const START_FEN: &str = "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr";
 
 pub struct Board<'a> {
     gl: &'a glow::Context,
     grid: GridRenderer<'a>,
-    squares: grid::Grid<Option<Piece>>,
+    bitboard: BitBoard,
     piece_renderer: PieceRenderer<'a>,
+
+    move_list: MoveList,
+    active_piece: Option<(i32, i32)>,
+    active_piece_moves: u64,
 }
 
 impl<'a> Board<'a> {
     pub fn new(gl: &'a glow::Context) -> Self {
         let grid = GridRenderer::new(gl);
-        let squares = Self::parse_fen(START_FEN);
         let piece_renderer = PieceRenderer::new(gl);
-
-        dbg!(squares.get(0, 0).unwrap());
+        let bitboard = BitBoard::from_fen(START_FEN);
 
         Self {
             gl,
             grid,
-            squares,
+            bitboard,
             piece_renderer,
+
+            active_piece: None,
+            move_list: MoveList::new(),
+            active_piece_moves: 0,
         }
+    }
+
+    fn update_active_piece_moves(&mut self) {
+        if let Some((col, row)) = self.active_piece {
+            let active_square = (row * 8 + col) as u8;
+            if let Some(Piece { color, .. }) = self.bitboard.get_piece_at(active_square) {
+                self.move_list = self.bitboard.generate_moves(color);
+                self.active_piece_moves = self.move_list.get_moves(active_square);
+
+                print!("Piece: {:?}, ", self.bitboard.get_piece_at((row * 8 + col) as u8));
+                println!("{:064b}", self.active_piece_moves);
+            }
+        }
+    }
+
+    pub fn set_active_square(&mut self, active_piece: Option<(i32, i32)>) {
+        self.active_piece = active_piece;
+        self.update_active_piece_moves();
     }
 
     pub fn render(&self) {
-        self.grid.render(Some((0, 0)));
-        self.piece_renderer.render(&self.squares);
-    }
+        // NOTE: (column, row)
+        self.grid.render(self.active_piece, self.active_piece_moves);
 
-    pub fn parse_fen(fen: &str) -> grid::Grid<Option<Piece>> {
-        let mut squares = grid::Grid::init(ROWS as _, COLS as _, None);
-
-        let mut row = 0;
-        let mut col = 0;
-
-        for ch in fen.chars() {
-            match ch {
-                n if n.is_ascii_digit() => col += n.to_digit(10).unwrap() as usize,
-
-                '/' => {
-                    col = 0;
-                    row += 1;
-                }
-
-                p => {
-                    let is_black = p.is_lowercase();
-                    let piece_ty = match p.to_ascii_lowercase() {
-                        'k' => PieceTy::King,
-                        'q' => PieceTy::Queen,
-                        'b' => PieceTy::Bishop,
-                        'n' => PieceTy::Knight,
-                        'r' => PieceTy::Rook,
-                        'p' => PieceTy::Pawn,
-
-                        x => unreachable!("unknown char: {x}"),
-                    };
-
-                    *squares.get_mut(row, col).unwrap() = Some(Piece {
-                        ty: piece_ty,
-                        color: if is_black {
-                            PieceColor::Black
-                        } else {
-                            PieceColor::White
-                        },
-                    });
-
-                    col += 1;
-                }
-            }
-        }
-
-        squares
+        self.piece_renderer.render(&self.bitboard);
     }
 }
