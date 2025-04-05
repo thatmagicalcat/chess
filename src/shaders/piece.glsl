@@ -25,6 +25,5 @@ uniform int texture_index;
 uniform sampler2DArray texture_array;
 
 void main() {
-    // frag_color = vec4(1.0, 0.0, 0.0, 1.0);
     frag_color = texture(texture_array, vec3(texture_coordinate, texture_index));
 }
