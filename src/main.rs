@@ -2,6 +2,7 @@ use board::Board;
 use glfw::*;
 use glow::HasContext;
 
+mod bitboard;
 mod board;
 mod grid_renderer;
 mod piece;
@@ -29,6 +30,9 @@ fn main() {
         .create_window(WIDTH, HEIGHT, "chess", WindowMode::Windowed)
         .unwrap();
 
+    window.set_mouse_button_polling(true);
+    window.set_cursor_pos_polling(true);
+
     let mut gl = unsafe { glow::Context::from_loader_function(|s| window.get_proc_address(s)) };
 
     println!("OpenGL {}", unsafe {
@@ -52,7 +56,7 @@ fn main() {
     // Adaptive V-Sync
     glfw.set_swap_interval(SwapInterval::Adaptive);
 
-    let board = Board::new(&gl);
+    let mut board = Board::new(&gl);
 
     while !window.should_close() {
         glfw.poll_events();
@@ -60,6 +64,20 @@ fn main() {
             #[allow(clippy::single_match)]
             match window_event {
                 WindowEvent::Close => window.set_should_close(true),
+                WindowEvent::MouseButton(MouseButtonLeft, Action::Press, ..) => {
+                    const STEP: f64 = 1.0 / 8.0;
+
+                    let (w, h) = window.get_size();
+                    let (x, y) = window.get_cursor_pos();
+                    let (x, y) = (x / w as f64, y / h as f64);
+
+                    let (col, row) = (x / STEP, y / STEP);
+                    let (col, row) = (col as i32, 7 - row as i32);
+                    dbg!(col, row);
+
+                    board.set_active_square(Some((col, row)));
+                }
+
                 _ => {}
             }
         }

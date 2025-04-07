@@ -61,7 +61,6 @@ dependencies = [
  "glam",
  "glfw",
  "glow",
- "grid",
  "image",
 ]
 
@@ -141,12 +140,6 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
-
-[[package]]
-name = "grid"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb6ae361963ea5fe52038156ea1729f3b4e4ccc0711c362ab2b2d2c0a259e7c3"
 
 [[package]]
 name = "image"
